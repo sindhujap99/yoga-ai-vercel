@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Yoga & Ayurveda Assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --card:#fff; --bg:#f6f7fb; }
+    body { margin:0; font-family: system-ui, Arial, sans-serif; background: var(--bg); }
+    .wrap { max-width: 820px; margin: 40px auto; padding: 0 16px; }
+    .card { background: var(--card); border-radius: 14px; padding: 20px; box-shadow: 0 6px 24px rgba(0,0,0,.06); }
+    h1 { margin: 0 0 12px; font-size: 22px; }
+    .desc { color:#555; margin: 0 0 16px; }
+    .chat { max-height: 60vh; overflow:auto; padding: 10px; border:1px solid #eee; border-radius: 10px; background:#fafafa; }
+    .msg { margin: 12px 0; line-height: 1.5; }
+    .msg .who { font-weight: 600; }
+    .msg.user .who { color:#2563eb; }
+    .msg.bot .who { color:#16a34a; }
+    .row { display: flex; gap: 10px; margin-top: 12px; }
+    textarea, button { font: inherit; border-radius: 10px; border:1px solid #ddd; padding: 10px 12px; }
+    textarea { flex:1; resize: vertical; min-height: 48px; }
+    button { background:#111; color:#fff; cursor:pointer; }
+    button:disabled { opacity:.6; cursor:not-allowed; }
+    .hint { font-size: 12px; color:#666; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Yoga & Ayurveda Assistant</h1>
+      <p class="desc">Ask about safe, gentle yoga options and Ayurveda tips. (Educational only, not medical advice.)</p>
+
+      <div id="chat" class="chat"></div>
+
+      <div class="row">
+        <textarea id="input" placeholder="e.g., I have mild lower-back tightness. What can I try?"></textarea>
+        <button id="sendBtn">Send</button>
+      </div>
+      <div class="hint">Tip: mention conditions (pregnancy, glaucoma, surgery) so I can include safety notes.</div>
+    </div>
+  </div>
+
+  <script>
+    const chatEl = document.getElementById("chat");
+    const inputEl = document.getElementById("input");
+    const sendBtn = document.getElementById("sendBtn");
+
+    function addMessage(text, who) {
+      const div = document.createElement("div");
+      div.className = `msg ${who}`;
+      div.innerHTML = `<div class="who">${who === "user" ? "You" : "Assistant"}</div><div class="text">${text.replace(/\n/g,"<br>")}</div>`;
+      chatEl.appendChild(div);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const msg = inputEl.value.trim();
+      if (!msg) return;
+      inputEl.value = "";
+      sendBtn.disabled = true;
+
+      addMessage(msg, "user");
+
+      try {
+        const r = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userMessage: msg })
+        });
+        const data = await r.json();
+        addMessage(data.reply || "Sorry, no response.", "bot");
+      } catch (e) {
+        addMessage("Error contacting server.", "bot");
+      } finally {
+        sendBtn.disabled = false;
+        inputEl.focus();
+      }
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Welcome message
+    addMessage("Hi! Tell me what you’re feeling (e.g., knee pain, desk-worker stiffness, pregnancy-safe options). I’ll suggest gentle yoga plus Ayurveda tips.", "bot");
+  </script>
+</body>
+</html>
